@@ -1,4 +1,4 @@
-import {createContext, ReactNode, useState} from 'react'
+import {createContext, ReactNode, useEffect, useState} from 'react'
 import challenges from '../../challenges.json';
 
 
@@ -22,7 +22,8 @@ interface ChallengesContextData {
   activeChallenge:Challenge;
   levelUp:()=>void;
   startNewChallenge:()=>void;
-  resetChallenge:()=>void;  
+  resetChallenge:()=>void; 
+  completeChallenge:()=>void; 
 }
 
 export const ChallengesContext = createContext({} as ChallengesContextData)
@@ -36,6 +37,12 @@ export function ChallengeProvider({children}:ChallengesProviderProps){
 
   const experienceToNextLevel = Math.pow((level+1)*4,2)
 
+  //executado uma unica vez.
+  useEffect(()=>{
+    Notification.requestPermission();
+  },[])
+
+
   function levelUp(){
     setLevel(level+1)
   }
@@ -45,11 +52,40 @@ export function ChallengeProvider({children}:ChallengesProviderProps){
     const randomChallengeIndex = Math.floor(Math.random()*challenges.length)
     const challenge = challenges[randomChallengeIndex]
     setActiveChallenge(challenge)
+
+    if(Notification.permission==='granted'){
+      new Notification('Novo desafio a vista',{
+        body:`Valendo ${challenge.amount} xp! =D`
+      })
+    }
+
+    new Audio('/notification.mp3').play();
+
   }
 
   function resetChallenge(){
     setActiveChallenge(null);
   }
+
+function completeChallenge(){
+  if(!activeChallenge){
+    return;    
+  }
+
+  const {amount} = activeChallenge;
+
+  let finalExperience = currentExperience+amount;
+
+  if(finalExperience>= experienceToNextLevel){
+    finalExperience -= experienceToNextLevel;
+    levelUp();
+  }
+
+  setcurrentExperience(finalExperience);
+  setChallengesCompleted(challengesCompleted+1);
+  setActiveChallenge(null);
+}
+
 
   return(
       <ChallengesContext.Provider 
@@ -61,7 +97,8 @@ export function ChallengeProvider({children}:ChallengesProviderProps){
         startNewChallenge, 
         activeChallenge,
         resetChallenge,
-        experienceToNextLevel}}>    
+        experienceToNextLevel,
+        completeChallenge}}>    
       {children}
       </ChallengesContext.Provider>
   )
